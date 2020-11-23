@@ -115,6 +115,19 @@ namespace ptl
 	template <typename T, std::size_t CAPACITY>
 	class fixed_capacity_vector
 	{
+		//In all my other class(template) declarations, I prefer to have private(and data members in general) below public functions
+		//Putting it first is a simple workaround for this gcc bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=52869 preventing noexcept from seeing member variables
+		//Its fixed in gcc 10, but fails to compile with older versions
+		private:
+		using storage_t=std::conditional_t
+		<
+			std::is_trivially_default_constructible_v<T> && std::is_trivially_destructible_v<T>,
+			detail::fixed_capacity_storage_literal<T,CAPACITY>,
+			detail::fixed_capacity_storage<T,CAPACITY>
+		>;
+		
+		storage_t storage_;
+		
 		public:
 		using value_type		=	T;
 		using reference			=	value_type&;
@@ -167,16 +180,6 @@ namespace ptl
 		constexpr void push_back(T&& value) noexcept(noexcept(storage_.construct_at(size(),std::move(value)))) { storage_.construct_at(size(),std::move(value)); ++storage_.used; }
 		
 		constexpr void pop_back() noexcept(std::is_nothrow_destructible<T>::value) { --storage_.used; storage_.destroy_at(size()); }
-
-		private:
-		using storage_t=std::conditional_t
-		<
-			std::is_trivially_default_constructible_v<T> && std::is_trivially_destructible_v<T>,
-			detail::fixed_capacity_storage_literal<T,CAPACITY>,
-			detail::fixed_capacity_storage<T,CAPACITY>
-		>;
-		
-		storage_t storage_;
 	};
 }
 
